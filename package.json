@@ -1,0 +1,31 @@
+{
+  "name": "SynoSSClient",
+  "version": "0.0.1-SNAPSHOT",
+  "description": "A lib to access some basic functions of the Synology Surveillance Station API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "axios": "^1.2.0"
+  },
+  "keywords": [
+    "Synology",
+    "SurveillanceStation",
+    "mjpeg",
+    "PTZ",
+    "live-stream",
+    "video"
+  ],
+  "author": "Tom Hirschberger",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Tom-Hirschberger/SynoSSClient.git"
+  },
+  "author": "Thomas Hirschberger",
+  "bugs": {
+    "url": "https://github.com/Tom-Hirschberger/SynoSSClient/issues"
+  },
+  "homepage": "https://github.com/Tom-Hirschberger/SynoSSClient/#readme"
+}
