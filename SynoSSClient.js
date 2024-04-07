@@ -15,7 +15,7 @@ const commondErrorCodes = {
 const authErrorCodes = {
     100: "Unkown error",
     101: "The account parameter is not specified",
-    400: "Invalid password",
+    400: "Invalid user or password",
     401: "Guest or diabled account",
     402: "Permission denied",
     403: "One time password not specified",
@@ -48,66 +48,128 @@ const PTZPresetErroCodes = {
 
 class QueryApiVersionError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "QueryApiVersionError";
+        this.name = "QueryApiVersionError"
     }
 }
 
 class LoginError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode!== "undefined"){
+            if (typeof authErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+authErrorCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "LoginError";
+        this.name = "LoginError"
     }
 }
 class LogoutError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof authErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+authErrorCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "LogoutError";
+        this.name = "LogoutError"
     }
 }
 
 class ListCameraError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof camErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+camErrorCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "ListCameraError";
+        this.name = "ListCameraError"
     }
 }
 
 class GetCameraStreamInfoError extends Error {
     constructor(message, cause) {
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof camErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+camErrorCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
         super(message);
         this.cause = cause
-        this.name = "GetCameraStreamInfoError";
+        this.name = "GetCameraStreamInfoError"
     }
 }
 
 class ListPTZInfoError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof PTZPresetErroCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+PTZPresetErroCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "ListPTZInfoError";
+        this.name = "ListPTZInfoError"
     }
 }
 
 class GoPTZPositionError extends Error {
     constructor(message, cause) {
-        super(message);
+        if (typeof cause.returnCode !== "undefined"){
+            if (typeof PTZErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+PTZErrorCodes[cause.returnCode]
+            } else if (typeof commondErrorCodes[cause.returnCode] !== "undefined"){
+                message = message + "\n"+commondErrorCodes[cause.returnCode]
+            }
+        }
+        if (typeof cause.error !== "undefined"){
+            message = message + "\n" + cause.error.toString()
+        }
+        super(message)
         this.cause = cause
-        this.name = "GoPTZPositionError";
+        this.name = "GoPTZPositionError"
     }
 }
 
-class AutoFocusError extends Error {
-    constructor(message, cause) {
-        super(message);
-        this.cause = cause
-        this.name = "AutoFocusError";
-    }
-}
 class SynoSSClient {
     //Look-at: https://global.download.synology.com/download/Document/Software/DeveloperGuide/Package/SurveillanceStation/All/enu/Surveillance_Station_Web_API.pdf
 
@@ -197,8 +259,13 @@ class SynoSSClient {
                     }
                     self.#apiVersions = newVersionInfo
                     return newVersionInfo
-                }).catch(error => {
-                    throw new QueryApiVersionError("Could not query the version information of the apis", {cause: { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                })
+                .catch(error => {
+                    if (typeof error !== "QueryApiVersionError"){
+                        throw new QueryApiVersionError("Could not query the version information of the apis", { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname})
+                    } else {
+                        throw error
+                    }
                 })
         }
     }
@@ -245,10 +312,14 @@ class SynoSSClient {
                                         self.#loginInfo = {sid: response.data.data.sid, synotoken: response.data.data.synotoken}
                                         return self.#loginInfo
                                     } else {
-                                        throw new Error("Login not possible",{cause: {response: response, returnCode: response.data.error.code}})
+                                        throw new LoginError("Login not possible",{response: response, returnCode: response.data.error.code})
                                     }
                                 }).catch(error => {
-                                    throw new LoginError("Could not login", {cause: { error:error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                    if (typeof error !== "LoginError"){
+                                        throw new LoginError("Login not possible", { error:error})
+                                    } else {
+                                        throw error
+                                    }
                                 })
                     }
                 )
@@ -290,10 +361,14 @@ class SynoSSClient {
                                         myResolve(true)
                                     });
                                 } else {
-                                    throw new LogoutError("Logout not possible. API retured with error.",{cause: {response: response, returnCode: response.data.error.code}})
+                                    throw new LogoutError("Logout not possible. API retured with error.",{response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                throw new LogoutError("Could not logout", {cause: { error:error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                if (typeof error !== "LogoutError"){
+                                    throw new LogoutError("Could not logout", { error:error})
+                                } else {
+                                    throw error
+                                }
                             })
                 }
             )
@@ -319,7 +394,7 @@ class SynoSSClient {
                         api: api,
                         method: "List",
                         version: apiVersions[api],
-                        _sid: this.#loginInfo.sid,
+                        _sid: this.#loginInfo.sid+"abc",
                         SynoToken: this.#loginInfo.synotoken
                     }
 
@@ -342,10 +417,14 @@ class SynoSSClient {
 
                                     return {camIds: camIds, nameIdMapping: camNameIdMapping,idNameMapping:camIdNameMapping}
                                 } else {
-                                    throw new ListCameraError("Could not list cameras", {cause: {response: response, returnCode: response.data.error.code}})
+                                    throw new ListCameraError("Could not list cameras", {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                throw new ListCameraError("Could not list cameras", {cause: { error:error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                if (typeof error !== "ListCameraError"){
+                                    throw new ListCameraError("Could not list cameras", { error:error})
+                                } else {
+                                    throw error
+                                }
                             }
                         )
                 }
@@ -396,10 +475,14 @@ class SynoSSClient {
 
                                     return camIdStreamMapping
                                 } else {
-                                    throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {cause: {response: response, returnCode: response.data.error.code}})
+                                    throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {cause: { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                if (typeof error !== "GetCameraStreamInfoError"){
+                                    throw new GetCameraStreamInfoError("Could not get stream info of the cameras", { error: error})
+                                } else {
+                                    throw error
+                                }
                             }
                         )
                 }
@@ -440,10 +523,14 @@ class SynoSSClient {
                                 if (response.data.success){
                                     return response.data.data.preset
                                 } else {
-                                    throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {cause: {response: response, returnCode: response.data.error.code}})
+                                    throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {cause: { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                if (typeof error !== "GetCameraStreamInfoError"){
+                                    throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, { error: error})
+                                } else {
+                                    throw error
+                                }
                             }
                         )
                 }
@@ -489,10 +576,14 @@ class SynoSSClient {
                                 if (response.data.success){
                                     return true
                                 } else {
-                                    throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, {cause: {response: reponse, returnCode: response.data.error.code}})
+                                    throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, {response: reponse, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, {cause: { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                                if (typeof error !== "GoPTZPositionError"){
+                                    throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, { error: error})
+                                } else {
+                                    throw error
+                                }
                             }
                         )
                 }
