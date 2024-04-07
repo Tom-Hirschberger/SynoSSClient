@@ -262,7 +262,7 @@ class SynoSSClient {
                     return newVersionInfo
                 })
                 .catch(error => {
-                    if (typeof error !== "QueryApiVersionError"){
+                    if (!error instanceof QueryApiVersionError){
                         throw new QueryApiVersionError("Could not query the version information of the apis", { error: error})
                     } else {
                         throw error
@@ -316,7 +316,7 @@ class SynoSSClient {
                                         throw new LoginError("Login not possible",{response: response, returnCode: response.data.error.code})
                                     }
                                 }).catch(error => {
-                                    if (typeof error !== "LoginError"){
+                                    if (!error instanceof LoginError){
                                         throw new LoginError("Login not possible", { error:error})
                                     } else {
                                         throw error
@@ -365,7 +365,7 @@ class SynoSSClient {
                                     throw new LogoutError("Logout not possible. API retured with error.",{response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                if (typeof error !== "LogoutError"){
+                                if (!error instanceof LogoutError){
                                     throw new LogoutError("Could not logout", { error:error})
                                 } else {
                                     throw error
@@ -421,7 +421,7 @@ class SynoSSClient {
                                     throw new ListCameraError("Could not list cameras", {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                if (typeof error !== "ListCameraError"){
+                                if (!error instanceof ListCameraError){
                                     throw new ListCameraError("Could not list cameras", { error:error})
                                 } else {
                                     throw error
@@ -479,7 +479,7 @@ class SynoSSClient {
                                     throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                if (typeof error !== "GetCameraStreamInfoError"){
+                                if (!error instanceof GetCameraStreamInfoError){
                                     throw new GetCameraStreamInfoError("Could not get stream info of the cameras", { error: error})
                                 } else {
                                     throw error
@@ -527,7 +527,7 @@ class SynoSSClient {
                                     throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {response: response, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                if (typeof error !== "GetCameraStreamInfoError"){
+                                if (!error instanceof ListPTZInfoError){
                                     throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, { error: error})
                                 } else {
                                     throw error
@@ -580,7 +580,7 @@ class SynoSSClient {
                                     throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, {response: reponse, returnCode: response.data.error.code})
                                 }
                             }).catch(error => {
-                                if (typeof error !== "GoPTZPositionError"){
+                                if (!error instanceof GoPTZPositionError){
                                     throw new GoPTZPositionError("Could not set PTZ preset of camera with id "+camId, { error: error})
                                 } else {
                                     throw error
