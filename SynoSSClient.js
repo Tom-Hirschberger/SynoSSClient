@@ -1,42 +1,84 @@
 const axios = require("axios").default;
 const https = require("https");
 
+class LogoutError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.cause = cause
+      this.name = "LogoutError";
+    }
+}
+
+class ListCameraError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.cause = cause
+      this.name = "ListCameraError";
+    }
+}
+
+class GetCameraStreamInfoError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.cause = cause
+      this.name = "GetCameraStreamInfoError";
+    }
+}
+
+class ListPTZInfoError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.cause = cause
+      this.name = "ListPTZInfoError";
+    }
+}
+
+class SetPTZPresetError extends Error {
+    constructor(message, cause) {
+      super(message);
+      this.cause = cause
+      this.name = "SetPTZPresetError";
+    }
+}
+
 class SynoSSClient {
+    //Look-at: https://global.download.synology.com/download/Document/Software/DeveloperGuide/Package/SurveillanceStation/All/enu/Surveillance_Station_Web_API.pdf
+
     //webapi/query.cgi?api=SYNO.API.Info&method=Query&version=1
-    #initClient;
+    #queryClient;
 
-    //webapi/query.cgi?api=SYNO.API.Auth
-    //webapi/query.cgi?api=SYNO.SurveillanceStation.Camera
-    //webapi/query.cgi?api=SYNO.SurveillanceStation.PTZ.Preset
-    #authenticatedClient;
+    //webapi/entry.cgi?api=SYNO.API.Auth
+    //webapi/entry.cgi?api=SYNO.SurveillanceStation.Camera
+    //webapi/entry.cgi?api=SYNO.SurveillanceStation.PTZ.Preset
+    #entryClient;
 
-    //Auth API Version
-    #authApiVersion
+    #apiVersions = null
 
-    //Camera API Version
-    #cameraApiVersion
+    //The login object containing the sid and token
+    #loginInfo
 
-    //PTZ Preset API Version
-    #ptzPresetApiVersion
+    //The inital options set during construction
+    #opts
 
-    constructor(opts, modulePath) {
+    constructor(opts) {
         this._init(opts);
     }
 
-    async _init(opts) {
-        this.opts = opts
+    _init(opts) {
+        this.#loginInfo = null
+        this.#opts = opts
 
         let baseURL = opts.host+":"+opts.port+"/webapi"
         if (opts.protocol === "http"){
-            this.#initClient = axios.create({
+            this.#queryClient = axios.create({
                 baseURL: "http://"+baseURL+"/query.cgi?api=SYNO.API.Info&method=Query&version=1",
             });
 
-            this.#authenticatedClient = axios.create({
-                baseURL: "http://"+baseURL,
+            this.#entryClient = axios.create({
+                baseURL: "http://"+baseURL+"/entry.cgi?",
             });
         } else {
-            this.#initClient = axios.create({
+            this.#queryClient = axios.create({
                 baseURL: "https://"+baseURL+"/query.cgi?api=SYNO.API.Info&method=Query&version=1",
                 httpsAgent: new https.Agent({
                     // This setting disables SSL certificate errors and reduces security
@@ -44,7 +86,7 @@ class SynoSSClient {
                 })
             });
 
-            this.#authenticatedClient = axios.create({
+            this.#entryClient = axios.create({
                 baseURL: "https://"+baseURL,
                 httpsAgent: new https.Agent({
                     // This setting disables SSL certificate errors and reduces security
@@ -52,139 +94,225 @@ class SynoSSClient {
                 })
             });
         }
+    }
 
-        this.allApisInfo = await this.queryApiVersions()
-        if (this.allApisInfo != null){
-            this.#authApiVersion = this.allApisInfo["SYNO.API.Auth"].maxVersion
-            console.log("AuthAPIVersion: "+this.#authApiVersion)
+    getLoginInfo(){
+        return this.#loginInfo
+    }
 
-            this.#cameraApiVersion = this.allApisInfo["SYNO.SurveillanceStation.Camera"].maxVersion
-            console.log("cameraAPIVersion: "+this.#cameraApiVersion)
-
-            this.#ptzPresetApiVersion = this.allApisInfo["SYNO.SurveillanceStation.PTZ.Preset"].maxVersion
-            console.log("ptzPresetApiVersion: "+this.#ptzPresetApiVersion)
-
-            this.loginInfo = await this.login(opts.user, opts.password)
-            console.log(JSON.stringify(this.loginInfo, null, 2))
-
-            this.camInfo = await this.getCams()
-
-            for (let camIdx = 0; camIdx < this.camInfo.length; camIdx++){
-                let curCamId = this.camInfo[camIdx].id
-
-                let paths = await this.getGetLiveViewPath(curCamId)
-                console.log("Cam["+this.camInfo[camIdx].id+"]("+this.camInfo[camIdx].newName+"): "+paths[0].mjpegHttpPath)
-            }
+    queryApiVersions(useCachedData){
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
+        }
+        const self = this
+        if (useCachedData && (self.#apiVersions != null)){
+            console.log("Cached information about the api versions available. Using it.")
+            return new Promise(function(myResolve, myReject) {
+                    myResolve(self.#apiVersions)
+                });
+        } else {
+            console.log("Either no cached api version information is available or we should not use it. Query the api version information.")
+            return self.#queryClient.get()
+                .then((response) => {
+                    let newVersionInfo = {}
+                    for (let curApi in response.data.data){
+                        newVersionInfo[curApi] = response.data.data[curApi].maxVersion
+                    }
+                    self.#apiVersions = newVersionInfo
+                    return newVersionInfo
+                })
         }
     }
 
-    queryApiVersions(){
-        return this.#initClient.get()
-            .then((response) => {
-                let allApis = response.data.data
-                return allApis
-            }).catch(error => {
-                console.error("Error while trying to query the available APIs and their supported versions!",error.errno, error.code, error.syscall, error.hostname)
-            })
+    login(useCachedData) {
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
+        }
+        const self = this
+        if (useCachedData && (self.#loginInfo != null)){
+            console.log("Login not neccessary. Using cached login information.")
+            return new Promise(function(myResolve, myReject) {
+                myResolve(self.#loginInfo)
+            });
+        } else {
+            console.log("Either no cached information is available or should be used. Trying to login.")
+
+            return self.logout(useCachedData).then( () => 
+                self.queryApiVersions(true).then(
+                    (apiVersions) => {
+                        let api = "SYNO.API.Auth"
+                        let loginObj = {
+                            api: api,
+                            version: apiVersions[api],
+                            method: "login",
+                            account: self.#opts.user,
+                            passwd: self.#opts.password,
+                            session: "SurveillanceStation",
+                            format: "sid",
+                            enable_syno_token: "yes"
+                        }
+
+                        return self.#entryClient
+                            .get(
+                                "",{
+                                    params: loginObj
+                                })
+                                .then((response) => {
+                                    if (response.data.success){
+                                        self.#loginInfo = {sid: response.data.data.sid, synotoken: response.data.data.synotoken}
+                                        return self.#loginInfo
+                                    } else {
+                                        throw new Error("Login not possible",{cause: {returnCode: response.data.error.code}})
+                                    }
+                                })
+                    }
+                )
+            )
+        }
     }
 
-    login(username, password) {
-        let loginObj = {
-            api:"SYNO.API.Auth",
-            version: this.#authApiVersion,
-            method: "login",
-            account: username,
-            passwd: password,
-            //session: "SurveillanceStation",
-            format: "sid",
-            enable_syno_token: "yes"
+    logout(useCachedData) {
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
         }
-        this.successfulLogin = false
+        const self = this
+        if (self.#loginInfo != null){
+            console.log("Trying to logout.")
 
-        return this.#authenticatedClient
-        .get(
-            "/entry.cgi?",{
-                params: loginObj
-            })
-            .then((response) => {
-                if (response.data.success){
-                    this.successfulLogin = true
-                    return {sid: response.data.data.sid, synotoken: response.data.data.synotoken}
-                } else {
-                    return {error: response.data.error.code}
+            return self.queryApiVersions(useCachedData).then(
+                (apiVersions) => {
+                    let api = "SYNO.API.Auth" 
+                    let logoutObj = {
+                        api: api,
+                        version: apiVersions[api],
+                        method: "logout",
+                        session: "SurveillanceStation",
+                        _sid: self.#loginInfo.sid,
+                        SynoToken: self.#loginInfo.synotoken
+                    }
+
+                    return self.#entryClient
+                        .get(
+                            "",{
+                                params: logoutObj
+                            })
+                            .then((response) => {
+                                if (response.data.success){
+                                    self.#loginInfo = null
+                                    return new Promise(function(myResolve, myReject) {
+                                        myResolve(true)
+                                    });
+                                } else {
+                                    throw new LogoutError("Logout not possible. API retured with error.",{cause: {returnCode: response.data.error.code}})
+                                }
+                            })
                 }
-            }).catch(error => {            
-                console.error("Error during login request!",error.errno, error.code, error.syscall, error.hostname);
-                return null
-            }
+            )
+        } else {
+            return new Promise(function(myResolve, myReject) {
+                myResolve(true)
+            });
+        }
+    }
+
+    getCams(useCachedData){
+        const self = this
+
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
+        }
+
+        return self.login(useCachedData).then(
+            () => self.queryApiVersions(true).then( 
+                (apiVersions) => {
+                    let api = "SYNO.SurveillanceStation.Camera"
+                    let camListObj = {
+                        api: api,
+                        method: "List",
+                        version: apiVersions[api],
+                        _sid: this.#loginInfo.sid,
+                        SynoToken: this.#loginInfo.synotoken
+                    }
+
+                    return this.#entryClient
+                        .get(
+                            "",{
+                                params: camListObj,
+                            })
+                            .then((response) => {
+                                if (response.data.success){
+                                    let camIdMapping = {}
+                                    for (let camIdx = 0; camIdx < response.data.data.cameras.length; camIdx ++){
+                                        let camObj = response.data.data.cameras[camIdx]
+                                        camIdMapping[camObj.newName] = camObj.id
+                                    }
+
+                                    return camIdMapping
+                                } else {
+                                    throw new ListCameraError("Could not list cameras", {cause: {returnCode: response.data.error.code}})
+                                }
+                            }).catch(error => {       
+                                throw new ListCameraError("Could not list cameras", {cause: { errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                            }
+                        )
+                }
+            )
         )
     }
 
-    getCams(){
-        if (this.successfulLogin){
-            let queryObj = {
-                api:"SYNO.SurveillanceStation.Camera",
-                method: "List",
-                version: this.#cameraApiVersion,
-                _sid: this.loginInfo.sid,
-                SynoToken: this.loginInfo.synotoken
-            }
+    getCamStreamInfo(camIds, useCachedData){
+        const self = this
 
-            return this.#authenticatedClient
-                .get(
-                    "/entry.cgi?",{
-                        params: queryObj,
-                    })
-                    .then((response) => {
-                        // console.log(response)
-                        console.log(JSON.stringify(response.data, null, 2))
-                        if (response.data.success){
-                            return response.data.data.cameras
-                        } else {
-                            return {error: response.data.error.code}
-                        }
-                    }).catch(error => {            
-                        console.error("Error during login request!",error.errno, error.code, error.syscall, error.hostname);
-                        return null
-                    }
-                )
-        } else {
-            return null
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
         }
-    }
 
-    getGetLiveViewPath(camId){
-        if (this.successfulLogin){
-            let queryObj = {
-                api:"SYNO.SurveillanceStation.Camera",
-                method: "GetLiveViewPath",
-                version: this.#cameraApiVersion,
-                _sid: this.loginInfo.sid,
-                SynoToken: this.loginInfo.synotoken,
-                idList: ""+camId
-            }
-
-            return this.#authenticatedClient
-                .get(
-                    "/entry.cgi?",{
-                        params: queryObj,
-                    })
-                    .then((response) => {
-                        // console.log(response)
-                        // console.log(JSON.stringify(response.data, null, 2))
-                        if (response.data.success){
-                            return response.data.data
-                        } else {
-                            return {error: response.data.error.code}
-                        }
-                    }).catch(error => {            
-                        console.error("Error during login request!",error.errno, error.code, error.syscall, error.hostname);
-                        return null
-                    }
-                )
-        } else {
-            return null
+        if (typeof camIds === "undefined"){
+            throw new GetCameraStreamInfoError("Could not get stream info of the cameras. The list of camera ids is missing!")
         }
+
+        camIds = camIds.join(",")
+
+        return self.login(useCachedData).then(
+            () => self.queryApiVersions(true).then( 
+                (apiVersions) => {
+                    let api = "SYNO.SurveillanceStation.Camera"
+                    let camStreamInfoObj = {
+                        api: api,
+                        method: "GetLiveViewPath",
+                        idList: camIds,
+                        version: apiVersions[api],
+                        _sid: this.#loginInfo.sid,
+                        SynoToken: this.#loginInfo.synotoken
+                    }
+
+                    return this.#entryClient
+                        .get(
+                            "",{
+                                params: camStreamInfoObj,
+                            })
+                            .then((response) => {
+                                if (response.data.success){
+                                    let camIdStreamMapping = {}
+
+                                    for (let camIdx = 0; camIdx < response.data.data.length; camIdx ++){
+                                        let camObj = response.data.data[camIdx]
+
+                                        camIdStreamMapping[camObj.id] = camObj.mjpegHttpPath
+                                    }
+
+                                    return camIdStreamMapping
+                                } else {
+                                    throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {cause: {returnCode: response.data.error.code}})
+                                }
+                            }).catch(error => {
+                                console.log(error)
+                                throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {cause: { errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                            }
+                        )
+                }
+            )
+        )
     }
 }
 
