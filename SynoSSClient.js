@@ -178,6 +178,7 @@ class SynoSSClient {
 
     //webapi/entry.cgi?api=SYNO.API.Auth
     //webapi/entry.cgi?api=SYNO.SurveillanceStation.Camera
+    //webapi/entry.cgi?api=SYNO.SurveillanceStation.PTZ
     //webapi/entry.cgi?api=SYNO.SurveillanceStation.PTZ.Preset
     #entryClient;
 
@@ -262,7 +263,7 @@ class SynoSSClient {
                 })
                 .catch(error => {
                     if (typeof error !== "QueryApiVersionError"){
-                        throw new QueryApiVersionError("Could not query the version information of the apis", { error: error, errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname})
+                        throw new QueryApiVersionError("Could not query the version information of the apis", { error: error})
                     } else {
                         throw error
                     }
@@ -394,7 +395,7 @@ class SynoSSClient {
                         api: api,
                         method: "List",
                         version: apiVersions[api],
-                        _sid: this.#loginInfo.sid+"abc",
+                        _sid: this.#loginInfo.sid,
                         SynoToken: this.#loginInfo.synotoken
                     }
 
