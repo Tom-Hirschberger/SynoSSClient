@@ -21,14 +21,19 @@ doIt = async function(){
     try{
         this.client = new SynoSSClient(opts, "Test");
 
-        let camIdMapping = await client.getCams()
-
-        let camIds = []
-        for (let camName in camIdMapping){
-            camIds.push(camIdMapping[camName])
-        }
+        let camMapping = await client.getCamIds()
+        let camIdNameMapping = camMapping.idNameMapping
+        let camIds = camMapping.camIds
+        
         let getCamStreamInfo = await client.getCamStreamInfo(camIds)
         console.log(JSON.stringify(getCamStreamInfo, null, 2))
+
+        for (let camIdx = 0; camIdx < camIds.length; camIdx++){
+            let camId = camIds[camIdx]
+            let camPTZPresetInfo = await this.client.getPTZPresetInfo(camId)
+            console.log("PTZPresetInfo of cam with id: "+camId + " and name: "+camIdNameMapping[camId]+":")
+            console.log(JSON.stringify(camPTZPresetInfo,null,2))
+        }
 
         console.log("Trying to logout (1)")
         await this.client.logout()

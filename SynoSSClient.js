@@ -215,7 +215,7 @@ class SynoSSClient {
         }
     }
 
-    getCams(useCachedData){
+    getCamIds(useCachedData){
         const self = this
 
         if (typeof useCachedData === "undefined"){
@@ -241,17 +241,22 @@ class SynoSSClient {
                             })
                             .then((response) => {
                                 if (response.data.success){
-                                    let camIdMapping = {}
+                                    let camIds = []
+                                    let camIdNameMapping = {}
+                                    let camNameIdMapping = {}
                                     for (let camIdx = 0; camIdx < response.data.data.cameras.length; camIdx ++){
                                         let camObj = response.data.data.cameras[camIdx]
-                                        camIdMapping[camObj.newName] = camObj.id
+                                        camNameIdMapping[camObj.newName] = camObj.id
+                                        camIdNameMapping[camObj.id] = camObj.newName
+                                        camIds.push(camObj.id)
                                     }
 
-                                    return camIdMapping
+                                    return {camIds: camIds, nameIdMapping: camNameIdMapping,idNameMapping:camIdNameMapping}
                                 } else {
                                     throw new ListCameraError("Could not list cameras", {cause: {returnCode: response.data.error.code}})
                                 }
-                            }).catch(error => {       
+                            }).catch(error => {
+                                console.log(error)
                                 throw new ListCameraError("Could not list cameras", {cause: { errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
                             }
                         )
@@ -308,6 +313,51 @@ class SynoSSClient {
                             }).catch(error => {
                                 console.log(error)
                                 throw new GetCameraStreamInfoError("Could not get stream info of the cameras", {cause: { errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
+                            }
+                        )
+                }
+            )
+        )
+    }
+
+    getPTZPresetInfo(camId, useCachedData){
+        const self = this
+
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
+        }
+
+        if (typeof camId === "undefined"){
+            throw new ListPTZInfoError("Could not get PTZ info of the camera. The camera id is missing!")
+        }
+
+        return self.login(useCachedData).then(
+            () => self.queryApiVersions(true).then( 
+                (apiVersions) => {
+                    let api = "SYNO.SurveillanceStation.PTZ.Preset"
+                    let camPTZInfoObj = {
+                        api: api,
+                        method: "Enum",
+                        cameraId: camId,
+                        version: apiVersions[api],
+                        _sid: this.#loginInfo.sid,
+                        SynoToken: this.#loginInfo.synotoken
+                    }
+
+                    return this.#entryClient
+                        .get(
+                            "",{
+                                params: camPTZInfoObj,
+                            })
+                            .then((response) => {
+                                if (response.data.success){
+                                    return response.data.data.preset
+                                } else {
+                                    throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {cause: {returnCode: response.data.error.code}})
+                                }
+                            }).catch(error => {
+                                console.log(error)
+                                throw new ListPTZInfoError("Could not get PTZ info of camera with id "+camId, {cause: { errno: error.errno, code: error.code, syscall: error.syscall, hostname: error.hostname}})
                             }
                         )
                 }
