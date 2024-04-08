@@ -170,7 +170,7 @@ class GoPTZPositionError extends Error {
     }
 }
 
-class SynoSSClient {
+class SynologySurveillanceStationClient {
     //Look-at: https://global.download.synology.com/download/Document/Software/DeveloperGuide/Package/SurveillanceStation/All/enu/Surveillance_Station_Web_API.pdf
 
     //webapi/query.cgi?api=SYNO.API.Info&method=Query&version=1
@@ -491,7 +491,7 @@ class SynoSSClient {
         )
     }
 
-    getPTZPresetInfo(camId, useCachedData){
+    getPTZPresetInfoOfOneCam(camId, useCachedData){
         const self = this
 
         if (typeof useCachedData === "undefined"){
@@ -537,6 +537,28 @@ class SynoSSClient {
                 }
             )
         )
+    }
+
+    getPTZPresetInfoOfCams(camIds, useCachedData){
+        const self = this
+        if(camIds.length > 0){
+            let presetInfos = {}
+            let chain = Promise.resolve()
+            for (let camId of camIds){
+                chain = chain.then(() => self.getPTZPresetInfoOfOneCam(camId, useCachedData).then((camResult) => {
+                    presetInfos[camId] = camResult
+                }))
+            }
+            return chain.then(() => {
+                return  new Promise(function(myResolve, myReject) {
+                    myResolve(presetInfos)
+                });
+            })
+        } else {
+            return new Promise(function(myResolve, myReject) {
+                myReject(new ListPTZInfoError("Could not list "))
+            });
+        }
     }
 
     goPTZPosition(camId, position, useCachedData){
@@ -591,6 +613,37 @@ class SynoSSClient {
             )
         )
     }
+
+    getAllInfosOfAllCams(useCachedData){
+        const self = this
+        let result = {}
+        return self.getCamIds(useCachedData).then((camIdInfo) => {
+            result.camIds = camIdInfo.camIds
+            result.camNameIdMapping = camIdInfo.nameIdMapping
+            result.camIdNameMapping = camIdInfo.idNameMapping
+            result.infosPerId = {}
+
+            for (let camId of result.camIds){
+                result.infosPerId[camId] = {}
+            }
+
+            return self.getCamStreamInfo(result.camIds, useCachedData).then((camIdStreamMapping) => {
+                for (let camId in camIdStreamMapping){
+                    result.infosPerId[camId].streamInfo = camIdStreamMapping[camId]
+                }
+
+                return self.getPTZPresetInfoOfCams(result.camIds, useCachedData).then((presetInfo) => {
+                    for (let camId in presetInfo){
+                        result.infosPerId[camId].presets = presetInfo[camId]
+                    }
+
+                    return  new Promise(function(myResolve, myReject) {
+                        myResolve(result)
+                    });
+                })
+            })
+        })
+    }
 }
 
-module.exports = SynoSSClient;
+module.exports = SynologySurveillanceStationClient;
