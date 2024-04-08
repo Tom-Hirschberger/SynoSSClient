@@ -44,17 +44,23 @@ doIt = async function(){
         // let presetInfos = await this.client.getPTZPresetInfoOfCams(camIds, true)
         // console.log(JSON.stringify(presetInfos, null, 2))
 
+        console.log("Gathering all info about all cameras of the DiskStation")
         let allInfos = await this.client.getAllInfosOfAllCams(true)
         console.log(JSON.stringify(allInfos, null, 2))
-
-        console.log("Trying to logout (1)")
-        await this.client.logout()
-        console.log("Logged out (1)")
     } catch (err){
         if (err.name === "LoginError"){
             console.log("LOGIN ERROR")
+            console.log(err)
         } else {
             console.error(err)
+        }
+    } finally{
+        console.log("Trying to logout finally")
+        try {
+            await this.client.logout()
+        } catch (logoutErr) {
+            console.log("Logout not possible")
+            console.log(logoutErr)
         }
     }
 }
