@@ -6,12 +6,12 @@ sleep = function(ms) {
 }
 
 let opts = {
-    protocol: "http",
     replaceHostPart: true,
     replacePortPart: true,
     ignoreCertErrors: true
 }
 
+opts.protocol = process.env.SYNO_PROTO
 opts.host = process.env.SYNO_HOST
 opts.port = process.env.SYNO_PORT
 opts.user = process.env.SYNO_USER

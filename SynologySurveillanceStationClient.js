@@ -219,7 +219,7 @@ class SynologySurveillanceStationClient {
             });
 
             this.#entryClient = axios.create({
-                baseURL: "https://"+baseURL,
+                baseURL: "https://"+baseURL+"/entry.cgi?",
                 httpsAgent: new https.Agent({
                     // This setting disables SSL certificate errors and reduces security
                     rejectUnauthorized: !opts.ignoreCertErrors
@@ -550,14 +550,12 @@ class SynologySurveillanceStationClient {
                 }))
             }
             return chain.then(() => {
-                return  new Promise(function(myResolve, myReject) {
+                return  new Promise(function(myResolve) {
                     myResolve(presetInfos)
                 });
             })
         } else {
-            return new Promise(function(myResolve, myReject) {
-                myReject(new ListPTZInfoError("Could not list "))
-            });
+            throw new ListPTZInfoError("Could not list PTZ preset infos of the cameras. The camera IDs are missing!")
         }
     }
 
@@ -637,7 +635,7 @@ class SynologySurveillanceStationClient {
                         result.infosPerId[camId].presets = presetInfo[camId]
                     }
 
-                    return  new Promise(function(myResolve, myReject) {
+                    return  new Promise(function(myResolve) {
                         myResolve(result)
                     });
                 })
