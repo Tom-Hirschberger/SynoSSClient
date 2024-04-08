@@ -237,10 +237,12 @@ class SynologySurveillanceStationClient {
     }
 
     queryApiVersions(useCachedData){
+        const self = this
+
         if (typeof useCachedData === "undefined"){
             useCachedData = true
         }
-        const self = this
+        
         if (useCachedData && (self.#apiVersions != null)){
             if (self.#debug){
                 console.log("Cached information about the api versions available. Using it.")
@@ -272,10 +274,12 @@ class SynologySurveillanceStationClient {
     }
 
     login(useCachedData) {
+        const self = this
+        
         if (typeof useCachedData === "undefined"){
             useCachedData = true
         }
-        const self = this
+        
         if (useCachedData && (self.#loginInfo != null)){
             if (self.#debug){
                 console.log("Login not neccessary. Using cached login information.")
@@ -440,7 +444,7 @@ class SynologySurveillanceStationClient {
             useCachedData = true
         }
 
-        if (typeof camIds === "undefined"){
+        if ((typeof camIds === "undefined") || (!Array.isArray(camIds)) || (camIds.length < 1)){
             throw new GetCameraStreamInfoError("Could not get stream info of the cameras. The list of camera ids is missing!")
         }
 
@@ -541,7 +545,7 @@ class SynologySurveillanceStationClient {
 
     getPTZPresetInfoOfCams(camIds, useCachedData){
         const self = this
-        if(camIds.length > 0){
+        if((typeof camIds !== "undefined") && Array.isArray(camIds) && (camIds.length > 0)){
             let presetInfos = {}
             let chain = Promise.resolve()
             for (let camId of camIds){
@@ -615,6 +619,11 @@ class SynologySurveillanceStationClient {
     getAllInfosOfAllCams(useCachedData){
         const self = this
         let result = {}
+
+        if (typeof useCachedData === "undefined"){
+            useCachedData = true
+        }
+
         return self.getCamIds(useCachedData).then((camIdInfo) => {
             result.camIds = camIdInfo.camIds
             result.camNameIdMapping = camIdInfo.nameIdMapping
