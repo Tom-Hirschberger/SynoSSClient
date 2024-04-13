@@ -1,4 +1,4 @@
-const SynologySurveillanceStationClient = require("./SynologySurveillanceStationClient");
+const MySynoSSclient = require("./MySynoSSclient");
 
 sleep = function(ms) {
     // add ms millisecond timeout before promise resolution
@@ -19,14 +19,17 @@ opts.password = process.env.SYNO_PASS
 
 doIt = async function(){
     try{
-        this.client = new SynologySurveillanceStationClient(opts, "Test");
+        this.client = new MySynoSSclient(opts, "Test");
+	
+	//let loginInfo = await this.client.login(false)
+	//console.log(JSON.stringify(loginInfo, null, 2))
 
-        // let camMapping = await this.client.getCamIds()
+        //let camMapping = await this.client.getCamIds()
         // // let camIdNameMapping = camMapping.idNameMapping
-        // let camIds = camMapping.camIds
+        //let camIds = camMapping.camIds
         
-        // let getCamStreamInfo = await this.client.getCamStreamInfo(camIds)
-        // console.log(JSON.stringify(getCamStreamInfo, null, 2))
+        //let getCamStreamInfo = await this.client.getCamStreamInfo(camIds)
+        //console.log(JSON.stringify(getCamStreamInfo, null, 2))
 
         // let presetInfo = {}
         // for (let camIdx = 0; camIdx < camIds.length; camIdx++){

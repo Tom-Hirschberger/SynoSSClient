@@ -170,7 +170,7 @@ class GoPTZPositionError extends Error {
     }
 }
 
-class SynologySurveillanceStationClient {
+class MySynoSSclient {
     //Look-at: https://global.download.synology.com/download/Document/Software/DeveloperGuide/Package/SurveillanceStation/All/enu/Surveillance_Station_Web_API.pdf
 
     //webapi/query.cgi?api=SYNO.API.Info&method=Query&version=1
@@ -313,6 +313,7 @@ class SynologySurveillanceStationClient {
                                     params: loginObj
                                 })
                                 .then((response) => {
+			            console.log(response)
                                     if (response.data.success){
                                         self.#loginInfo = {sid: response.data.data.sid, synotoken: response.data.data.synotoken}
                                         return self.#loginInfo
@@ -409,6 +410,7 @@ class SynologySurveillanceStationClient {
                                 params: camListObj,
                             })
                             .then((response) => {
+                                console.log(response)
                                 if (response.data.success){
                                     let camIds = []
                                     let camIdNameMapping = {}
@@ -469,6 +471,7 @@ class SynologySurveillanceStationClient {
                                 params: camStreamInfoObj,
                             })
                             .then((response) => {
+                                console.log(response)
                                 if (response.data.success){
                                     let camIdStreamMapping = {}
 
@@ -653,4 +656,4 @@ class SynologySurveillanceStationClient {
     }
 }
 
-module.exports = SynologySurveillanceStationClient;
+module.exports = MySynoSSclient;
