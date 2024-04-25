@@ -1,4 +1,4 @@
-const MySynoSSclient = require("./MySynoSSclient");
+const MySynoSSclient = require("./MySynoSSClient");
 
 sleep = function(ms) {
     // add ms millisecond timeout before promise resolution
